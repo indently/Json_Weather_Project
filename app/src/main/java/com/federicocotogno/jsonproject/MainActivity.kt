@@ -2,8 +2,6 @@ package com.federicocotogno.jsonproject
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkInfo
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -22,7 +20,6 @@ import java.lang.Exception
 
 import java.net.URL
 
-
 class MainActivity : AppCompatActivity() {
 
     private val TAG = "Main"
@@ -35,13 +32,16 @@ class MainActivity : AppCompatActivity() {
     private var mainWeather = ""
     private var currentTemp = ""
     private var feelsLikeTemp = ""
-    var apiResult = "https://api.openweathermap.org/data/2.5/weather?q=copenhagen&units=metric&appid=$API_KEY"
+
+    private var apiDefaultResult =
+        "https://api.openweathermap.org/data/2.5/weather?q=copenhagen&appid=$API_KEY"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         if (isConnected()) {
+            loadData()
 
             returnJsonWeather()
             updateUI()
@@ -50,11 +50,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "You need internet to use this app", Toast.LENGTH_SHORT).show()
         }
-
     }
 
-    private fun isConnected() : Boolean{
-
+    private fun isConnected(): Boolean {
         return true
     }
 
@@ -68,12 +66,30 @@ class MainActivity : AppCompatActivity() {
                     cityEntered = et_enter_city.text.toString()
                     returnJsonWeather()
 
-
                 } catch (e: Exception) {
-                    Toast.makeText(this, "City not recognised", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Something went wrong in updateCityName()")
                 }
+            } else {
+                Toast.makeText(this, "Enter a city name", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun saveData() {
+
+        val sp = getSharedPreferences("SHARED_PREFS", Context.MODE_PRIVATE)
+        val editor = sp.edit()
+        editor.apply {
+            putString("last_place", cityEntered)
+        }.apply()
+
+    }
+
+    private fun loadData() {
+        val sp = getSharedPreferences("SHARED_PREFS", Context.MODE_PRIVATE)
+        val lastLocationString = sp.getString("last_place","copenhagen")
+        cityEntered = lastLocationString!!
+
     }
 
     private fun View.hideKeyboard() {
@@ -83,46 +99,51 @@ class MainActivity : AppCompatActivity() {
 
     private fun returnJsonWeather() {
 
-            GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launch(Dispatchers.IO) {
 
-                try {
+            try {
 
-                    val apiResult =
-                        URL("https://api.openweathermap.org/data/2.5/weather?q=$cityEntered&units=metric&appid=$API_KEY").readText()
-                    Log.d("Request", apiResult)
+                val apiResult =
+                    URL("https://api.openweathermap.org/data/2.5/weather?q=$cityEntered&units=metric&appid=$API_KEY").readText()
+                Log.d("Request", apiResult)
 
-                    val jsonObject = JSONObject(apiResult)
-                    val main = jsonObject.getJSONObject("main")
-                    tempMax = "Max Temp: " + main.getString("temp_max") + "°C"
-                    tempMin = "Min Temp: " + main.getString("temp_min") + "°C"
-                    currentTemp = "Current Temp: " + main.getString("temp") + "°C"
-                    feelsLikeTemp = "Feels like: " + main.getString("feels_like") + "°C"
+                val jsonObject = JSONObject(apiResult)
+                val main = jsonObject.getJSONObject("main")
+                tempMax = "Max Temp: " + main.getString("temp_max") + "°C"
+                tempMin = "Min Temp: " + main.getString("temp_min") + "°C"
+                currentTemp = "Current Temp: " + main.getString("temp") + "°C"
+                feelsLikeTemp = "Feels like: " + main.getString("feels_like") + "°C"
 
-                    val weather = jsonObject.getJSONArray("weather").getJSONObject(0)
-                    mainWeather = "Now: " + weather.getString("main")
-                    descriptionWeather = weather.getString("description")
-                    weatherImageCode = weather.getString("icon")
+                val weather = jsonObject.getJSONArray("weather").getJSONObject(0)
+                mainWeather = "Now: " + weather.getString("main")
+                descriptionWeather = weather.getString("description")
+                weatherImageCode = weather.getString("icon")
 
-                    Log.i(TAG, main.toString())
-                    Log.i(TAG, weather.toString())
-                    Log.i(TAG, "---------------------------------------------------------------")
-                    Log.i(TAG, tempMax)
-                    Log.i(TAG, tempMin)
-                    Log.i(TAG, currentTemp)
-                    Log.i(TAG, mainWeather)
-                    Log.i(TAG, descriptionWeather)
-                    Log.i(TAG, weatherImageCode)
-                    Log.i(TAG, "---------------------------------------------------------------")
+                Log.i(TAG, main.toString())
+                Log.i(TAG, weather.toString())
+                Log.i(TAG, "---------------------------------------------------------------")
+                Log.i(TAG, tempMax)
+                Log.i(TAG, tempMin)
+                Log.i(TAG, currentTemp)
+                Log.i(TAG, mainWeather)
+                Log.i(TAG, descriptionWeather)
+                Log.i(TAG, weatherImageCode)
+                Log.i(TAG, "---------------------------------------------------------------")
+
+                saveData()
 
                 withContext(Dispatchers.Main) {
                     updateUI()
                 }
 
-                }  catch (e: Exception) {
-                    apiResult = "https://api.openweathermap.org/data/2.5/weather?q=copenhagen&units=metric&appid=$API_KEY"
-                    Log.e(TAG, "Error in returnJsonWeather()")
+            } catch (e: Exception) {
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, "Error with city name", Toast.LENGTH_SHORT).show()
                 }
+                Log.e(TAG, "Error in returnJsonWeather()")
             }
+        }
 
     }
 

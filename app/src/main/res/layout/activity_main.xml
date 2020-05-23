@@ -60,8 +60,8 @@
             android:ems="8"
             android:gravity="center"
             android:selectAllOnFocus="true"
-            android:hint="Enter a city"
-            android:text="Copenhagen" />
+            android:hint="ex: Copenhagen"
+            />
 
         <ImageView
             android:id="@+id/btn_confirm_city"
